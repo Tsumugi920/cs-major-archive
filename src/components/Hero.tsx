@@ -16,7 +16,7 @@ function Stat({ end, label, active }: { end: number; label: string; active: bool
   )
 }
 
-export default function Hero({ onSelect }: { onSelect: (id: string) => void }) {
+export default function Hero({ onSelect }: { onSelect: (id: string, source?: HTMLElement | null) => void }) {
   const ref = useRef<HTMLElement>(null)
   const [active, setActive] = useState(false)
   useEffect(() => {
@@ -80,7 +80,15 @@ export default function Hero({ onSelect }: { onSelect: (id: string) => void }) {
                 <i className="fa-solid fa-trophy" aria-hidden="true" />
                 FEATURED MAJOR
               </p>
-              <button className="feat__view" onClick={() => onSelect(featured.id)}>
+              <button
+                className="feat__view"
+                onClick={(e) =>
+                  onSelect(
+                    featured.id,
+                    e.currentTarget.closest('.feat')?.querySelector<HTMLImageElement>('.feat__team--champ img') ?? null,
+                  )
+                }
+              >
                 VIEW ALL
                 <i className="fa-solid fa-arrow-right-long" aria-hidden="true" />
               </button>

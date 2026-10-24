@@ -42,7 +42,7 @@
 - **名人堂(HALL OF FAME)** —— 三张传奇卡(真实选手照片 + N APPEARANCES / N × TOP10 / N × #1)+ Career Timeline 年份圆点轴(点击传奇卡切换),下方保留 260 个名额叠加的完整榜单:排序 / 搜索 / 逐年展开。
 - **详情页** —— 点击任意一届进入全屏「冠军档案卷宗」:决赛地图比分条、逐图选手数据(HLTV 官方统计)、淘汰赛梯级、参赛队伍、当年 TOP20 冠军成员、决赛视频(点击播放)。
 
-设计上,全站按参考图《深色〈反恐精英〉Major 历史档案馆界面》做像素级合并:1536px 内容盒、炭黑底 `#060B0E`,暖奶油衬线展示体(Playfair Display)与冷灰白 UI 正文双白体系;香槟金 `#E5CFAC` 只用于标签 / 序号 / 年份 / 排名,比分与 rating 一律静谧青 `#6CB4C4`。Playfair Display / Oswald / Inter 均本地打包,离线可用;图标走 Font Awesome CDN。24 支冠军与参赛战队使用真实队徽(本地 `public/logos/`,来源 Wikimedia / Liquipedia),无素材战队自动回退字母徽章。动效克制——入场渐显、数字滚动、悬停微移、滚动进度,并完整适配 `prefers-reduced-motion`。
+设计上,全站按参考图《深色〈反恐精英〉Major 历史档案馆界面》做像素级合并:1536px 内容盒、炭黑底 `#060B0E`,暖奶油衬线展示体(Playfair Display)与冷灰白 UI 正文双白体系;香槟金 `#E5CFAC` 只用于标签 / 序号 / 年份 / 排名,比分与 rating 一律静谧青 `#6CB4C4`。Playfair Display / Oswald / Inter 均本地打包,离线可用;图标走 Font Awesome CDN。24 支冠军与参赛战队使用真实队徽(本地 `public/logos/`,来源 Wikimedia / Liquipedia),无素材战队自动回退字母徽章。动效克制而有质感——入场渐显、数字滚动、冠军卡悬停上浮与扫光、era 切换退场/错落入场编排、编年史金脊线滚动点亮与比分数字翻牌、导航滑动式金色指示条、详情页队徽飞入过渡、传奇卡陈列柜悬停氛围、Top20 前三金银铜强调、滚动进度,并完整适配 `prefers-reduced-motion`。
 
 <div align="center">
   <img src="assets/readme/header-data.svg" alt="区块:数据档案" width="100%">

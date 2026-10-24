@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { useReducedMotion } from 'framer-motion'
 import crowdTex from '../assets/archive/crowd-tex.jpg'
 import { eventName } from '../data'
 import type { Major } from '../data'
+import { gsap, useGSAP } from '../lib/motion'
 import TeamLogo from './TeamLogo'
 
-function ChampCard({ major, onSelect }: { major: Major; onSelect: (id: string) => void }) {
+function ChampCard({ major, onSelect }: { major: Major; onSelect: (id: string, source?: HTMLElement | null) => void }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(major.id)}
+      onClick={(e) => onSelect(major.id, e.currentTarget.querySelector<HTMLImageElement>('.champ-card__logo img'))}
       className="champ-card"
       title={major.fullName}
     >
@@ -32,18 +34,62 @@ export default function ChampionHall({
 }: {
   majors: Major[]
   eraFilter: 'all' | 'CS:GO' | 'CS2'
-  onSelect: (id: string) => void
+  onSelect: (id: string, source?: HTMLElement | null) => void
 }) {
   const stripRef = useRef<HTMLDivElement>(null)
   const [canLeft, setCanLeft] = useState(false)
   const [canRight, setCanRight] = useState(true)
-  const list = (eraFilter === 'all' ? majors : majors.filter((m) => m.era === eraFilter)).slice().reverse()
+  const reduce = useReducedMotion()
+  // era 切换两段编排：旧卡淡出上移 → 换卡 → 新卡按时间顺序错落进入。
+  // shownEra 是「画面上正在展示的年代」，eraFilter 是「用户刚选的年代」，换卡延迟到退场完成。
+  const [shownEra, setShownEra] = useState(eraFilter)
+  const list = (shownEra === 'all' ? majors : majors.filter((m) => m.era === shownEra)).slice().reverse()
 
   useEffect(() => {
-    stripRef.current?.scrollTo({ left: 0 })
+    if (eraFilter === shownEra) return
+    const el = stripRef.current
+    if (!el || reduce) {
+      setShownEra(eraFilter)
+      return
+    }
+    gsap.to(el.querySelectorAll('.champ-card'), {
+      autoAlpha: 0,
+      y: -6,
+      duration: 0.15,
+      stagger: 0.008,
+      ease: 'power2.in',
+      overwrite: 'auto',
+      onComplete: () => setShownEra(eraFilter),
+    })
+  }, [eraFilter, shownEra, reduce])
+
+  // 换卡后：复位滚动位置，新卡自下而上错落进入（首次挂载跳过）
+  const prevEraRef = useRef<string | null>(null)
+  useGSAP(
+    () => {
+      const prev = prevEraRef.current
+      prevEraRef.current = shownEra
+      if (prev === null || prev === shownEra) return
+      const el = stripRef.current
+      if (!el) return
+      el.scrollTo({ left: 0 })
+      const mm = gsap.matchMedia()
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        gsap.fromTo(
+          el.querySelectorAll('.champ-card'),
+          { autoAlpha: 0, y: 14 },
+          { autoAlpha: 1, y: 0, duration: 0.34, stagger: 0.035, ease: 'power3.out', overwrite: 'auto' },
+        )
+      })
+      return () => mm.revert()
+    },
+    { dependencies: [shownEra], revertOnUpdate: true },
+  )
+
+  useEffect(() => {
     updateArrows()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eraFilter])
+  }, [shownEra])
 
   const updateArrows = () => {
     const el = stripRef.current

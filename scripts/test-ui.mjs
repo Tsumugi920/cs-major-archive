@@ -119,6 +119,19 @@ await expect('页首 HOME 导航高亮（scrollspy 绑定 hero）', async () => 
   const active = await page.locator('.nav__links a.is-active').allTextContents()
   return active.length === 1 && active[0] === 'HOME' ? true : `active=${JSON.stringify(active)}`
 })
+await expect('导航指示条初始位于 HOME 下方', async () => {
+  const ok = await page.evaluate(() => {
+    const ink = document.querySelector('.nav__ink')
+    const home = document.querySelector('.nav__links a[href="#top"]')
+    if (!ink || !home) return 'missing ink/link'
+    const e = new DOMMatrix(getComputedStyle(ink).transform).e
+    const w = Number.parseFloat(getComputedStyle(ink).width)
+    return Math.abs(e - home.offsetLeft) < 3 && Math.abs(w - home.offsetWidth) < 3
+      ? true
+      : `e=${e} home=${home.offsetLeft} w=${w} linkW=${home.offsetWidth}`
+  })
+  return ok === true ? true : String(ok)
+})
 
 // 3. 冠军殿堂：窄卡轮播 + 时代过滤
 await expect('默认 24 张冠军卡', async () => (await page.locator('.champ-card').count()) === 24)
@@ -142,17 +155,81 @@ await expect('冠军卡结构完整（年份/赛事/冠军/比分/对手）', as
   return ok ? true : `y=${year} e=${event} t=${team} s=${score} r=${runner}`
 })
 await page.click('.era-switch__btn:nth-child(3)')
-await page.waitForTimeout(700)
+await page.waitForTimeout(1100)
 await expect('Header 切换 CS2 后 5 张卡', async () => (await page.locator('.champ-card').count()) === 5)
 await page.click('.era-switch__btn:nth-child(2)')
-await page.waitForTimeout(700)
+await page.waitForTimeout(1100)
 await expect('Header 切换 CS:GO 后 19 张卡', async () => (await page.locator('.champ-card').count()) === 19)
 await page.click('.era-switch__btn:nth-child(1)')
-await page.waitForTimeout(700)
+await expect('era 切换换卡后新卡错落进入（GSAP 逐帧采样）', () =>
+  page.evaluate(async () => {
+    const strip = document.querySelector('.champ__strip')
+    if (!strip) return 'missing strip'
+    // 先等退场完成、卡数从 19 换成 24，再采样入场补间
+    for (let i = 0; i < 150; i++) {
+      if (strip.querySelectorAll('.champ-card').length === 24) break
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    if (strip.querySelectorAll('.champ-card').length !== 24) return 'never swapped to 24'
+    for (let i = 0; i < 45; i++) {
+      const mid = Array.from(strip.querySelectorAll('.champ-card')).some((el) => {
+        const op = el.style.opacity
+        return op !== '' && Number(op) < 0.999
+      })
+      if (mid) return true
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    return 'entrance never mid-tween'
+  }),
+)
+await page.waitForTimeout(1500)
 await expect('切回全部 24 张卡', async () => (await page.locator('.champ-card').count()) === 24)
 
 await page.evaluate(() => document.getElementById('hall')?.scrollIntoView({ behavior: 'instant' }))
 await page.waitForTimeout(900)
+
+// 3.5 冠军卡悬停反馈：GSAP 委托上浮 + CSS 扫光 + 队徽微放大
+{
+  const hoverCard = page.locator('.champ-card').first()
+  const cb = await hoverCard.boundingBox()
+  if (cb) {
+    await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2, { steps: 3 })
+    await page.waitForTimeout(450)
+    await expect('冠军卡悬停上浮（GSAP 委托 y≈-6）', async () => {
+      const y = await hoverCard.evaluate((el) => {
+        const t = el.style.transform
+        if (!t || t === 'none') return null
+        return new DOMMatrix(t).f
+      })
+      return y !== null && y <= -3 ? true : `y=${y}`
+    })
+    await page.waitForTimeout(700)
+    await expect('冠军卡悬停扫光位移到位（::after e>80）', async () => {
+      const e = await hoverCard.evaluate((el) => {
+        const t = getComputedStyle(el, '::after').transform
+        if (!t || t === 'none') return null
+        return new DOMMatrix(t).e
+      })
+      return e !== null && e > 80 ? true : `e=${e}`
+    })
+    await expect('冠军卡悬停队徽微放大（scale≈1.07）', async () => {
+      const s = await hoverCard
+        .locator('.champ-card__logo .tl-logo-img, .champ-card__logo .tl-logo-fallback')
+        .first()
+        .evaluate((el) => {
+          const t = getComputedStyle(el).transform
+          if (!t || t === 'none') return null
+          return new DOMMatrix(t).a
+        })
+      return s !== null && s > 1.04 && s < 1.1 ? true : `scale=${s}`
+    })
+    await page.mouse.move(10, 300, { steps: 3 })
+    await page.waitForTimeout(500)
+  } else {
+    check('冠军卡悬停反馈', false, 'boundingBox 为空')
+  }
+}
+
 await expect('右箭头点击后卡组滚动', async () => {
   await page.locator('.champ__arrow--r').click()
   await page.waitForTimeout(900)
@@ -174,6 +251,17 @@ await expect('滚动到末尾后左箭头可用', async () => {
 await page.evaluate(() => document.getElementById('timeline')?.scrollIntoView({ behavior: 'instant' }))
 await page.waitForTimeout(900)
 await expect('年份轨 24 个年份', async () => (await page.locator('.chron__year').count()) === 24)
+await expect('编年史金脊线随滚动点亮（scaleY>0.15）', async () => {
+  const d = await page.evaluate(() => {
+    const t = getComputedStyle(document.querySelector('.chron__rail'), '::after').transform
+    return t === 'none' ? 0 : new DOMMatrix(t).d
+  })
+  return d !== null && d > 0.15 ? true : `d=${d}`
+})
+await expect('脊线途经年份点亮（is-lit>0）', async () => {
+  const n = await page.locator('.chron__year.is-lit').count()
+  return n > 0 ? true : `lit=${n}`
+})
 await expect('默认选中最新一届（2026 激活）', async () => {
   const active = await page.locator('.chron__year.is-active').textContent()
   return active === '2026' ? true : `active=${active}`
@@ -210,6 +298,24 @@ await expect('照片卡与 Match Highlights 链接到视频', async () => {
   const hl = await page.locator('.chron__hl-link').first().getAttribute('href')
   return !!photoHref && photoHref.includes('youtube') && !!hl && hl.includes('youtube') ? true : `photo=${photoHref} hl=${hl}`
 })
+await page.locator('.chron__year', { hasText: '2016' }).first().click()
+await expect('编年史切换比分数字翻牌（GSAP 逐帧采样）', () =>
+  page.evaluate(async () => {
+    for (let i = 0; i < 45; i++) {
+      const digits = document.querySelectorAll('.chron__score-digit')
+      if (digits.length > 0) {
+        const mid = Array.from(digits).some((el) => {
+          const op = el.style.opacity
+          return op !== '' && Number(op) < 0.999
+        })
+        if (mid) return true
+      }
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    return 'flip never mid-tween'
+  }),
+)
+await page.waitForTimeout(900)
 await expect('点击年份 2013 切换卷宗内容', async () => {
   await page.locator('.chron__year', { hasText: '2013' }).first().click()
   await page.waitForTimeout(700)
@@ -224,16 +330,21 @@ await page.evaluate(() => document.getElementById('top20')?.scrollIntoView({ beh
 await page.waitForTimeout(1400)
 await expect('年份按钮 13 个（2013-2025）', async () => (await page.locator('.t20__years .yearnav__btn').count()) === 13)
 await expect('榜单 20 行完整呈现（双列）', async () => (await page.locator('.top20-row').count()) === 20)
-await expect('第一名获得强调样式（is-top）', async () => (await page.locator('.top20-row.is-top').count()) === 1)
+await expect('前三名获得金银铜强调样式', async () => {
+  const g = await page.locator('.top20-row--gold').count()
+  const s = await page.locator('.top20-row--silver').count()
+  const b = await page.locator('.top20-row--bronze').count()
+  return g === 1 && s === 1 && b === 1 ? true : `gold=${g} silver=${s} bronze=${b}`
+})
 await expect('名次补零格式（01…20）', async () => {
   const first = await page.locator('.top20-row__rank').first().textContent()
   const last = await page.locator('.top20-row__rank').last().textContent()
   return first === '01' && last === '20' ? true : `first=${first} last=${last}`
 })
-const topPlayer2025 = await page.locator('.top20-row.is-top .top20-row__id b').first().textContent()
+const topPlayer2025 = await page.locator('.top20-row--gold .top20-row__id b').first().textContent()
 await page.locator('.t20__years .yearnav__btn', { hasText: '2016' }).click()
 await page.waitForTimeout(1300)
-const topPlayer2016 = await page.locator('.top20-row.is-top .top20-row__id b').first().textContent()
+const topPlayer2016 = await page.locator('.top20-row--gold .top20-row__id b').first().textContent()
 await expect('切换年份后年度第一更替', () => !!topPlayer2025 && !!topPlayer2016 && topPlayer2025 !== topPlayer2016)
 
 // 6. 名人堂：传奇卡 + Career Timeline + 完整榜单
@@ -262,6 +373,34 @@ await expect('名人堂统计计数到终值 101', async () => {
   const num = await page.locator('.hof__stats b').first().textContent()
   return num?.trim() === '101' ? true : `stat=${num}`
 })
+
+// 6.4 传奇卡陈列柜氛围：慢速扫光 + 肖像微放大
+{
+  const lg = page.locator('.legend-card').first()
+  const lb = await lg.boundingBox()
+  if (lb) {
+    await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2, { steps: 3 })
+    await page.waitForTimeout(600)
+    await expect('传奇卡悬停肖像放大（scale≈1.06）', async () => {
+      const s = await lg.locator('.legend__photo').first().evaluate((el) => {
+        const t = getComputedStyle(el).transform
+        return t === 'none' ? null : new DOMMatrix(t).a
+      })
+      return s !== null && s > 1.03 && s < 1.1 ? true : `scale=${s}`
+    })
+    await expect('传奇卡慢速扫光位移（::after e>80）', async () => {
+      const e = await lg.evaluate((el) => {
+        const t = getComputedStyle(el, '::after').transform
+        return t === 'none' ? null : new DOMMatrix(t).e
+      })
+      return e !== null && e > 80 ? true : `e=${e}`
+    })
+    await page.mouse.move(10, 10, { steps: 3 })
+    await page.waitForTimeout(400)
+  } else {
+    check('传奇卡陈列柜氛围', false, 'boundingBox 为空')
+  }
+}
 await page.fill('.hof__search input', 's1mple')
 await page.waitForTimeout(700)
 await expect('搜索过滤到 1 行', async () => (await page.locator('.hof-row').count()) === 1)
@@ -317,13 +456,32 @@ await page.evaluate(() => document.getElementById('hall')?.scrollIntoView({ beha
 await page.waitForTimeout(700)
 await page.locator('.champ-card').first().click()
 await page.waitForSelector('.detail', { state: 'visible' })
-await page.waitForTimeout(400)
-await expect('比分条生长中（GSAP scaleX<1）', async () => {
-  const vals = await page.locator('.maprow__fill').evaluateAll((els) =>
-    els.map((el) => (getComputedStyle(el).transform === 'none' ? 1 : new DOMMatrix(getComputedStyle(el).transform).a)),
-  )
-  return vals.length > 0 && vals.some((v) => v < 0.98) ? true : `a=${JSON.stringify(vals)}`
-})
+await expect('队徽飞入幽灵过渡（GSAP 逐帧采样）', () =>
+  page.evaluate(async () => {
+    for (let i = 0; i < 60; i++) {
+      const g = document.querySelector('.detail-ghost')
+      if (g) {
+        const op = Number(g.style.opacity)
+        if (op > 0 && op < 0.85) return true
+      }
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    return 'ghost never mid-flight'
+  }),
+)
+await expect('比分条生长中（GSAP scaleX<1）', () =>
+  // 生长补间 0.25s 延迟 + 0.6s 时长：固定等待采样会被时序抖动甩过窗口，改逐帧轮询捕捉
+  page.evaluate(async () => {
+    for (let i = 0; i < 90; i++) {
+      const vals = Array.from(document.querySelectorAll('.maprow__fill')).map(
+        (el) => (getComputedStyle(el).transform === 'none' ? 1 : new DOMMatrix(getComputedStyle(el).transform).a),
+      )
+      if (vals.length > 0 && vals.some((v) => v < 0.98)) return true
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    return 'never mid-tween'
+  }),
+)
 await page.waitForTimeout(1300)
 await expect('比分条生长完成（scaleX=1）', async () => {
   const vals = await page.locator('.maprow__fill').evaluateAll((els) =>
@@ -431,6 +589,16 @@ await expect('导航 scrollspy 高亮 HALL OF FAME', async () => {
   const active = await page.locator('.nav__links a.is-active').allTextContents()
   return active.some((t) => t.includes('HALL OF FAME')) ? true : `active=${JSON.stringify(active)}`
 })
+await expect('导航指示条滑动到激活链接下方', async () => {
+  const ok = await page.evaluate(() => {
+    const ink = document.querySelector('.nav__ink')
+    const active = document.querySelector('.nav__links a.is-active')
+    if (!ink || !active) return 'missing ink/active'
+    const e = new DOMMatrix(getComputedStyle(ink).transform).e
+    return Math.abs(e - active.offsetLeft) < 4 ? true : `e=${e} active=${active.offsetLeft}`
+  })
+  return ok === true ? true : String(ok)
+})
 
 // 8.5 GSAP：资源加载淡入（捕获阶段委托 load 事件）
 await expect('图片加载后淡入而非跳入', () =>
@@ -476,6 +644,15 @@ await expect('reduced-motion 下标题直接可见', async () => {
   return opacity === '1' ? true : `opacity=${opacity}`
 })
 await expect('reduced-motion 无页面错误', () => rmErrors.length === 0)
+await expect('reduced-motion 金脊线静态全亮', async () => {
+  const d = await rmPage.evaluate(() => {
+    const rail = document.querySelector('.chron__rail')
+    if (!rail) return null
+    const t = getComputedStyle(rail, '::after').transform
+    return t === 'none' ? 0 : new DOMMatrix(t).d
+  })
+  return d !== null && d > 0.99 ? true : `d=${d}`
+})
 
 // 10.5 reduced-motion：详情页 GSAP 全部跳过，内容直接呈现、翻页仍可用
 await rmPage.evaluate(() => document.getElementById('hall')?.scrollIntoView({ behavior: 'instant' }))
@@ -497,6 +674,16 @@ const rmTitleB = await rmPage.locator('.detail__title').textContent()
 await expect('reduced-motion 下翻页仍可用', () => !!rmTitleA && !!rmTitleB && rmTitleA !== rmTitleB)
 await rmPage.keyboard.press('Escape')
 await rmPage.waitForTimeout(800)
+await rmPage.locator('.era-switch__btn').nth(1).click()
+await rmPage.waitForTimeout(400)
+await expect('reduced-motion era 切换直接换卡（无补间内联样式）', async () => {
+  const n = await rmPage.locator('.champ-card').count()
+  const styled = await rmPage.evaluate(() =>
+    Array.from(document.querySelectorAll('.champ-card')).filter((el) => el.style.opacity !== '' || el.style.transform !== '')
+      .length,
+  )
+  return n === 19 && styled === 0 ? true : `n=${n} styled=${styled}`
+})
 await rmPage.close()
 
 // 11. 移动端：导航两行、无横向溢出、卡组可横滑、榜单单列

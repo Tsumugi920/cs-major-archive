@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import stageCard from '../assets/archive/stage-card.jpg'
 import { eventName, finalMapsOf, formatPurse, videosOf } from '../data'
 import type { Major } from '../data'
+import { gsap, useGSAP, ScrollTrigger } from '../lib/motion'
 import TeamLogo from './TeamLogo'
 
 export default function Timeline({
@@ -13,6 +14,8 @@ export default function Timeline({
 }) {
   const [selectedId, setSelectedId] = useState(allMajors[allMajors.length - 1].id)
   const railRef = useRef<HTMLUListElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
   const selected = allMajors.find((m) => m.id === selectedId) ?? allMajors[allMajors.length - 1]
   const rail = [...allMajors].reverse()
   const videos = videosOf(selected)
@@ -31,12 +34,81 @@ export default function Timeline({
     if (el.scrollHeight > el.clientHeight) el.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
   }, [selectedId])
 
+  // 金脊线随页面滚动逐步点亮，途经年份依次 is-lit（选中态 is-active 仍由点选驱动）
+  useGSAP(
+    () => {
+      const section = sectionRef.current
+      const rail = railRef.current
+      if (!section || !rail) return
+      const years = Array.from(rail.querySelectorAll<HTMLElement>('.chron__year'))
+      const apply = (p: number) => {
+        const clamped = Math.max(0, Math.min(1, p))
+        rail.style.setProperty('--chron-fill', String(clamped))
+        const lit = Math.round(clamped * years.length)
+        years.forEach((y, i) => y.classList.toggle('is-lit', i < lit))
+      }
+      const mm = gsap.matchMedia()
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        let lastLit = -1
+        const applyLit = (p: number) => {
+          const lit = Math.round(Math.max(0, Math.min(1, p)) * years.length)
+          if (lit === lastLit) return
+          lastLit = lit
+          years.forEach((y, i) => y.classList.toggle('is-lit', i < lit))
+        }
+        const st = ScrollTrigger.create({
+          trigger: section,
+          start: 'top 80%',
+          end: 'bottom 55%',
+          onUpdate: (self) => {
+            rail.style.setProperty('--chron-fill', String(self.progress))
+            applyLit(self.progress)
+          },
+        })
+        rail.style.setProperty('--chron-fill', String(st.progress))
+        applyLit(st.progress)
+        return () => {
+          st.kill()
+          rail.style.removeProperty('--chron-fill')
+          years.forEach((y) => y.classList.remove('is-lit'))
+        }
+      })
+      mm.add('(prefers-reduced-motion: reduce)', () => {
+        apply(1)
+        return () => {
+          rail.style.removeProperty('--chron-fill')
+          years.forEach((y) => y.classList.remove('is-lit'))
+        }
+      })
+      return () => mm.revert()
+    },
+    { scope: sectionRef },
+  )
+
+  // 比分数字翻牌：.chron__body 按 selectedId 重挂载，换届后新数字绕 X 轴翻入
+  useGSAP(
+    () => {
+      const digits = bodyRef.current?.querySelectorAll('.chron__score-digit')
+      if (!digits || digits.length === 0) return
+      const mm = gsap.matchMedia()
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        gsap.fromTo(
+          digits,
+          { rotateX: -78, autoAlpha: 0, transformPerspective: 360 },
+          { rotateX: 0, autoAlpha: 1, duration: 0.5, ease: 'expo.out', stagger: 0.1, delay: 0.12, overwrite: 'auto' },
+        )
+      })
+      return () => mm.revert()
+    },
+    { dependencies: [selectedId], revertOnUpdate: true },
+  )
+
   const viewAll = () => {
     document.getElementById('hall')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
-    <section className="chron band" id="timeline">
+    <section className="chron band" id="timeline" ref={sectionRef}>
       <div className="chron__grid">
         <div
           className="panel chron__main"
@@ -55,7 +127,7 @@ export default function Timeline({
               <i className="fa-solid fa-arrow-right-long" aria-hidden="true" />
             </button>
           </div>
-          <div className="chron__body" key={selectedId}>
+          <div className="chron__body" key={selectedId} ref={bodyRef}>
             <ul className="chron__rail" ref={railRef} aria-label="按年份选择赛事">
               {rail.map((m) => (
                 <li key={m.id}>
@@ -113,7 +185,17 @@ export default function Timeline({
                   <i className="fa-solid fa-display" aria-hidden="true" />
                   <dt>Final</dt>
                   <dd>
-                    <span className="chron__score">{selected.score.replace('–', ' : ')}</span>
+                    <span className="chron__score">
+                      {selected.score.replace('–', ' : ').split('').map((ch, i) =>
+                        /\d/.test(ch) ? (
+                          <span className="chron__score-digit" key={i}>
+                            {ch}
+                          </span>
+                        ) : (
+                          ch
+                        ),
+                      )}
+                    </span>
                     <small>MVP {selected.mvp}</small>
                   </dd>
                 </div>

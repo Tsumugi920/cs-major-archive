@@ -256,6 +256,7 @@ body::after {
 }
 
 .nav__links {
+  position: relative;
   display: flex;
   gap: clamp(14px, 2.6vw, 38px);
   margin: 0 auto;
@@ -284,25 +285,19 @@ body::after {
   color: var(--cream);
 }
 
-.nav__links a::after {
-  content: '';
+/* 金色指示条：单滑块，x/width 由 GSAP scrollspy 驱动（useScrollSpy） */
+.nav__ink {
   position: absolute;
   left: 0;
-  right: 0;
   bottom: 0;
   height: 2px;
+  width: 0;
   background: var(--gold);
-  transform: scaleX(0);
-  transform-origin: 50% 0;
-  transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
 }
 
 .nav__links a.is-active {
   color: var(--gold);
-}
-
-.nav__links a.is-active::after {
-  transform: scaleX(1);
 }
 
 /* 年代胶囊切换 */
@@ -869,7 +864,33 @@ body::after {
 }
 
 .champ-card:hover {
-  border-color: var(--line-strong);
+  border-color: rgba(218, 195, 160, 0.45);
+}
+
+/* 悬停扫光：金调斜切光带自左向右掠过。卡片本体的 y/scale 归 GSAP 委托，
+   这里只动 ::after 自身的 transform，互不争抢。 */
+.champ-card::after {
+  content: '';
+  position: absolute;
+  top: -12%;
+  bottom: -12%;
+  left: 0;
+  width: 46%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(238, 197, 143, 0.06) 36%,
+    rgba(255, 252, 240, 0.17) 50%,
+    rgba(238, 197, 143, 0.06) 64%,
+    transparent 100%
+  );
+  transform: translateX(-130%) skewX(-18deg);
+  transition: transform 0.65s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
+}
+
+.champ-card:hover::after {
+  transform: translateX(300%) skewX(-18deg);
 }
 
 .champ-card__tex {
@@ -920,6 +941,16 @@ body::after {
   border: 0;
   background: transparent;
   color: var(--muted);
+}
+
+.champ-card__logo .tl-logo-img,
+.champ-card__logo .tl-logo-fallback {
+  transition: transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.champ-card:hover .champ-card__logo .tl-logo-img,
+.champ-card:hover .champ-card__logo .tl-logo-fallback {
+  transform: scale(1.07);
 }
 
 .champ-card__team {
@@ -1096,6 +1127,20 @@ body::after {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* 金脊线：scaleY 由 Timeline 的 ScrollTrigger 写入 --chron-fill（0→1），随页面滚动点亮 */
+.chron__rail::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  bottom: 4px;
+  width: 1px;
+  background: linear-gradient(180deg, var(--gold), rgba(229, 207, 172, 0.5));
+  transform: scaleY(var(--chron-fill, 0));
+  transform-origin: 50% 0;
+  pointer-events: none;
+}
+
 .chron__year {
   position: relative;
   display: flex;
@@ -1137,6 +1182,19 @@ body::after {
 
 .chron__year:hover {
   color: var(--muted);
+}
+
+/* 脊线途经的年份：半亮（.is-active 的完全体规则在后面，同权重时后者胜出） */
+.chron__year.is-lit {
+  color: var(--muted);
+}
+
+.chron__year.is-lit::before {
+  border-color: rgba(218, 195, 160, 0.6);
+}
+
+.chron__year.is-lit::after {
+  opacity: 0.45;
 }
 
 .chron__year.is-active {
@@ -1296,6 +1354,11 @@ body::after {
   font-size: 13px;
   letter-spacing: 1px;
   color: var(--cream);
+}
+
+/* 比分数字翻牌：rotateX 由 GSAP 驱动，inline-block 是 transform 前置条件 */
+.chron__score-digit {
+  display: inline-block;
 }
 
 .chron__row dd small {
@@ -1630,8 +1693,22 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
-.top20-row.is-top .top20-row__rank {
+.top20-row--gold .top20-row__rank,
+.top20-row--silver .top20-row__rank,
+.top20-row--bronze .top20-row__rank {
   opacity: 1;
+}
+
+.top20-row--gold .top20-row__rank {
+  color: var(--gold);
+}
+
+.top20-row--silver .top20-row__rank {
+  color: #cdd2d6;
+}
+
+.top20-row--bronze .top20-row__rank {
+  color: #c98a5e;
 }
 
 .top20-row .player-avatar {
@@ -1656,8 +1733,34 @@ body::after {
   text-overflow: ellipsis;
 }
 
-.top20-row.is-top .top20-row__id b {
+.top20-row--gold {
+  background: linear-gradient(90deg, rgba(218, 195, 160, 0.07), rgba(218, 195, 160, 0) 72%);
+}
+
+.top20-row--silver {
+  background: linear-gradient(90deg, rgba(194, 199, 203, 0.05), rgba(194, 199, 203, 0) 72%);
+}
+
+.top20-row--bronze {
+  background: linear-gradient(90deg, rgba(182, 104, 69, 0.06), rgba(182, 104, 69, 0) 72%);
+}
+
+.top20-row--gold .top20-row__id b,
+.top20-row--silver .top20-row__id b,
+.top20-row--bronze .top20-row__id b {
   color: var(--cream);
+}
+
+.top20-row--gold .player-avatar {
+  border-color: rgba(218, 195, 160, 0.55);
+}
+
+.top20-row--silver .player-avatar {
+  border-color: rgba(201, 206, 210, 0.45);
+}
+
+.top20-row--bronze .player-avatar {
+  border-color: rgba(201, 138, 94, 0.5);
 }
 
 .top20-row__team {
@@ -1758,11 +1861,37 @@ body::after {
   color: inherit;
   text-align: left;
   min-width: 0;
+  overflow: hidden;
   transition: border-color 0.2s;
 }
 
 .legend-card:hover {
   border-color: var(--line-strong);
+}
+
+/* 陈列柜氛围：慢速金调扫光（比冠军卡更缓），卡片本体 scale 归 GSAP 委托，此处只动 ::after */
+.legend-card::after {
+  content: '';
+  position: absolute;
+  top: -12%;
+  bottom: -12%;
+  left: 0;
+  width: 46%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(238, 197, 143, 0.05) 36%,
+    rgba(255, 252, 240, 0.12) 50%,
+    rgba(238, 197, 143, 0.05) 64%,
+    transparent 100%
+  );
+  transform: translateX(-130%) skewX(-18deg);
+  transition: transform 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
+}
+
+.legend-card:hover::after {
+  transform: translateX(300%) skewX(-18deg);
 }
 
 .legend-card.is-active {
@@ -1795,6 +1924,12 @@ body::after {
   object-position: top center;
   filter: saturate(0.82) brightness(0.94);
   margin-top: 10px;
+  transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1), filter 0.4s ease;
+}
+
+.legend-card:hover .legend__photo {
+  transform: scale(1.06);
+  filter: saturate(1) brightness(1);
 }
 
 .legend__photo--fallback {
@@ -1812,6 +1947,25 @@ body::after {
   min-width: 0;
   flex: 1;
   padding-top: 12px;
+}
+
+/* 信息依次浮现：悬停时姓名→上榜数→统计错峰回归全亮；选中卡常亮 */
+.legend__meta > span {
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
+
+.legend__meta > span:nth-child(2) {
+  transition-delay: 0.05s;
+}
+
+.legend__meta > span:nth-child(3) {
+  transition-delay: 0.1s;
+}
+
+.legend-card:hover .legend__meta > span,
+.legend-card.is-active .legend__meta > span {
+  opacity: 1;
 }
 
 .legend__name {
@@ -2268,6 +2422,22 @@ body::after {
   background: rgba(5, 9, 12, 0.97);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* 队徽飞入幽灵：从来源卡片位置滑向详情队徽，GSAP 驱动 x/y/scale/透明度 */
+.detail-ghost {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.detail-ghost img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.55));
 }
 
 .detail__bar {
@@ -3198,6 +3368,32 @@ html[data-page-ready] .page-skeleton {
     animation: none;
   }
 
+  .champ-card::after {
+    display: none;
+  }
+
+  .champ-card:hover .champ-card__logo .tl-logo-img,
+  .champ-card:hover .champ-card__logo .tl-logo-fallback {
+    transform: none;
+  }
+
+  .legend-card::after {
+    display: none;
+  }
+
+  .legend__photo,
+  .legend__meta > span {
+    transition: none;
+  }
+
+  .legend-card:hover .legend__photo {
+    transform: none;
+  }
+
+  .legend__meta > span {
+    opacity: 1;
+  }
+
   .hof-row__detail {
     transition: none;
   }
@@ -3427,7 +3623,7 @@ html[data-page-ready] .page-skeleton {
     padding: 11px 10px;
   }
 
-  .nav__links a::after {
+  .nav__ink {
     bottom: 5px;
   }
 

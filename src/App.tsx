@@ -76,7 +76,10 @@ const PRESS_SCALE: [string, number][] = [
   ['.detail__nav button', 0.97],
 ]
 
-const HOVER_LIFT: [string, number][] = [['.detail__nav button', -2]]
+const HOVER_LIFT: [string, number][] = [
+  ['.champ-card', -6],
+  ['.detail__nav button', -2],
+]
 
 function usePressFeedback() {
   useEffect(() => {
@@ -172,10 +175,11 @@ function useMediaLoadFade() {
   }, [])
 }
 
-/** 导航 scrollspy：当前所在区块的链接高亮（HOME 绑定 hero，其余绑定各区块） */
+/** 导航 scrollspy：当前所在区块的链接高亮；金色指示条是单个滑块，随激活链接平移 */
 function useScrollSpy() {
   useEffect(() => {
     const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.nav__links a'))
+    const ink = document.querySelector<HTMLElement>('.nav__ink')
     const pairs = links
       .map((l) => ({
         link: l,
@@ -185,17 +189,47 @@ function useScrollSpy() {
             : document.querySelector<HTMLElement>(l.getAttribute('href') ?? ''),
       }))
       .filter((p): p is { link: HTMLAnchorElement; el: HTMLElement } => !!p.el)
+    const visible = new Set<HTMLElement>()
+
+    // 取文档序最靠前的可见区块；无可见区块时保持原位
+    const placeInk = (animate: boolean) => {
+      if (!ink) return
+      const current = pairs.find((p) => visible.has(p.el))?.link
+      if (!current) return
+      const x = current.offsetLeft
+      const width = current.offsetWidth
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (animate && !reduce) {
+        gsap.to(ink, { x, width, duration: 0.35, ease: 'power3.out', overwrite: 'auto' })
+      } else {
+        gsap.set(ink, { x, width })
+      }
+    }
+
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           const i = pairs.findIndex((p) => p.el === entry.target)
-          if (i >= 0) pairs[i].link.classList.toggle('is-active', entry.isIntersecting)
+          if (i < 0) continue
+          if (entry.isIntersecting) visible.add(pairs[i].el)
+          else visible.delete(pairs[i].el)
+          pairs[i].link.classList.toggle('is-active', entry.isIntersecting)
         }
+        placeInk(true)
       },
       { rootMargin: '-25% 0px -65% 0px' },
     )
     pairs.forEach((p) => io.observe(p.el))
-    return () => io.disconnect()
+
+    // 初始与字体/视口变化后的重定位（不动画）
+    placeInk(false)
+    document.fonts?.ready.then(() => placeInk(false))
+    const onResize = () => placeInk(false)
+    window.addEventListener('resize', onResize)
+    return () => {
+      io.disconnect()
+      window.removeEventListener('resize', onResize)
+    }
   }, [])
 }
 
@@ -227,13 +261,23 @@ function EraSwitch({
   )
 }
 
+/** 详情页打开时来源队徽的视口矩形（点击瞬间的位置，用于飞入幽灵过渡） */
+export type DetailOrigin = { x: number; y: number; w: number; h: number }
+
 export default function App() {
   const [eraFilter, setEraFilter] = useState<'all' | 'CS:GO' | 'CS2'>('all')
-  const [detailId, setDetailId] = useState<string | null>(null)
+  const [detailId, setDetailIdState] = useState<string | null>(null)
+  const [detailOrigin, setDetailOrigin] = useState<DetailOrigin | null>(null)
   useReveal()
   useScrollSpy()
   usePressFeedback()
   useMediaLoadFade()
+
+  const setDetailId = (id: string, source?: HTMLElement | null) => {
+    const r = source?.getBoundingClientRect()
+    setDetailOrigin(r && r.width > 0 ? { x: r.left, y: r.top, w: r.width, h: r.height } : null)
+    setDetailIdState(id)
+  }
 
   useEffect(() => {
     const ready = requestAnimationFrame(() => document.documentElement.setAttribute('data-page-ready', 'true'))
@@ -258,6 +302,7 @@ export default function App() {
             <a href="#timeline">TIMELINE</a>
             <a href="#top20">TOP 20</a>
             <a href="#hof">HALL OF FAME</a>
+            <span className="nav__ink" aria-hidden="true" />
           </nav>
           <EraSwitch eraFilter={eraFilter} setEraFilter={setEraFilter} />
         </header>
@@ -301,7 +346,9 @@ export default function App() {
         <BackToTop />
       </div>
       <AnimatePresence>
-        {detailId ? <MajorDetail id={detailId} onClose={() => setDetailId(null)} onSelect={setDetailId} /> : null}
+        {detailId ? (
+          <MajorDetail id={detailId} origin={detailOrigin} onClose={() => setDetailIdState(null)} onSelect={setDetailId} />
+        ) : null}
       </AnimatePresence>
     </div>
   )

@@ -7,8 +7,9 @@ import PlayerAvatar from './PlayerAvatar'
 const YEARS = Object.keys(top20).sort()
 
 function Row({ e }: { e: Top20Entry }) {
+  const tier = e.rank === 1 ? ' top20-row--gold' : e.rank === 2 ? ' top20-row--silver' : e.rank === 3 ? ' top20-row--bronze' : ''
   return (
-    <li className={`top20-row${e.rank === 1 ? ' is-top' : ''}`}>
+    <li className={`top20-row${tier}`}>
       <span className="top20-row__rank">{String(e.rank).padStart(2, '0')}</span>
       <PlayerAvatar name={e.player} size={19} />
       <span className="top20-row__id">

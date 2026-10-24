@@ -288,10 +288,12 @@ function MatchStats({ major }: { major: Major }) {
 
 export default function MajorDetail({
   id,
+  origin,
   onClose,
   onSelect,
 }: {
   id: string
+  origin: { x: number; y: number; w: number; h: number } | null
   onClose: () => void
   onSelect: (id: string) => void
 }) {
@@ -341,6 +343,7 @@ export default function MajorDetail({
       const dir = prevIdx === null || prevIdx === idx ? 0 : idx > prevIdx ? 1 : -1
 
       const mm = gsap.matchMedia()
+      let ghost: HTMLDivElement | null = null
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         const sections = gsap.utils.toArray<HTMLElement>(body.children)
         if (dir === 0) {
@@ -349,6 +352,39 @@ export default function MajorDetail({
             { autoAlpha: 0, y: 22 },
             { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power3.out', stagger: 0.065, delay: 0.05 },
           )
+          // 队徽飞入幽灵：从来源卡片的位置滑向详情冠军队徽，落点前淡出。
+          // 目标矩形取自级联进行中的布局（最多偏差一个级联位移），幽灵到达时已近全透明。
+          const target = body.querySelector<HTMLImageElement>('.detail__team img.tl-logo-img')
+          const host = overlayRef.current
+          if (origin && target && host) {
+            ghost = document.createElement('div')
+            ghost.className = 'detail-ghost'
+            ghost.style.left = `${origin.x}px`
+            ghost.style.top = `${origin.y}px`
+            ghost.style.width = `${origin.w}px`
+            ghost.style.height = `${origin.h}px`
+            const img = document.createElement('img')
+            img.src = target.currentSrc || target.src
+            img.alt = ''
+            ghost.appendChild(img)
+            host.appendChild(ghost)
+            const to = target.getBoundingClientRect()
+            gsap.fromTo(
+              ghost,
+              { x: 0, y: 0, scale: 1, autoAlpha: 0.85 },
+              {
+                x: to.left + to.width / 2 - (origin.x + origin.w / 2),
+                y: to.top + to.height / 2 - (origin.y + origin.h / 2),
+                scale: to.width / origin.w,
+                autoAlpha: 0,
+                duration: 0.55,
+                ease: 'expo.out',
+                delay: 0.1,
+                overwrite: 'auto',
+                onComplete: () => ghost?.remove(),
+              },
+            )
+          }
         } else {
           gsap.fromTo(
             sections,
@@ -363,6 +399,10 @@ export default function MajorDetail({
             { scaleX: 0 },
             { scaleX: 1, duration: 0.6, ease: 'expo.out', delay: 0.25, stagger: 0.08 },
           )
+        }
+        return () => {
+          ghost?.remove()
+          ghost = null
         }
       })
       return () => mm.revert()
