@@ -138,7 +138,10 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: tech-title-shine 5s linear infinite;
+  /* Keep the original mask-up entrance: tech.css must NOT replace it,
+     or the title stays translated 112% down inside its overflow mask. */
+  animation: hero-mask-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    tech-title-shine 5s linear infinite;
   background-size: 200% 100%;
 }
 
@@ -322,12 +325,16 @@
   .tech-grid,
   .tech-scanline::after,
   .tech-hud__dot,
-  .tech-hero .hero__title-line,
   .tech-hero .hero__title-line::before,
   .tech-hero .hero__title-line::after,
   .tech-hero .hero__trophy,
   .tech-ticker__track,
   .tech-shell .nav__mark {
     animation: none !important;
+  }
+  /* With animation off, the mask-up entrance must not leave the title hidden. */
+  .tech-hero .hero__title-line {
+    animation: none !important;
+    transform: translateY(0) !important;
   }
 }
