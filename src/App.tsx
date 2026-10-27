@@ -4,6 +4,7 @@ import ChampionHall from './components/ChampionHall'
 import HallOfFame from './components/HallOfFame'
 import Hero from './components/Hero'
 import MajorDetail from './components/MajorDetail'
+import TechHud from './components/TechHud'
 import Timeline from './components/Timeline'
 import Top20Section from './components/Top20Section'
 import { majors } from './data'
@@ -285,7 +286,8 @@ export default function App() {
   }, [])
 
   return (
-    <div className="shell">
+    <div className="shell tech-shell">
+      <TechHud />
       <div className="bg-fx" aria-hidden="true" />
       <div className={`app${detailId ? ' is-hidden' : ''}`}>
         <ProgressRail />

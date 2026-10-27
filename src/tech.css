@@ -1,0 +1,333 @@
+/* ==========================================================================
+   TECH OVERLAY — fork-only visual upgrade (data files untouched)
+   Direction: dark HUD / neon cyan + magenta, scanlines, grid, glow, motion.
+   This file is loaded AFTER index.css, so it only overrides / adds.
+   Reduced-motion users keep a static, readable page.
+   ========================================================================== */
+
+:root {
+  --neon: #00e5ff;
+  --neon-soft: #6ef3ff;
+  --neon-2: #ff2e88;
+  --neon-3: #7c5cff;
+  --tech-line: rgba(0, 229, 255, 0.35);
+  --tech-glow: 0 0 18px rgba(0, 229, 255, 0.45), 0 0 42px rgba(0, 229, 255, 0.18);
+}
+
+/* ---------- Fixed HUD layers (never block clicks) ---------- */
+
+.tech-hud,
+.tech-scanline,
+.tech-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+
+.tech-grid {
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.055) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(1200px 700px at 50% 0%, black 30%, transparent 78%);
+  animation: tech-grid-pan 24s linear infinite;
+}
+
+.tech-scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 229, 255, 0.035) 3px,
+    rgba(0, 229, 255, 0.035) 4px
+  );
+  mix-blend-mode: screen;
+}
+
+.tech-scanline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(180deg, transparent, rgba(0, 229, 255, 0.07), transparent);
+  animation: tech-scan-sweep 7s linear infinite;
+}
+
+.tech-hud__top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 96;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 14px;
+  font-family: var(--font-label);
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: var(--neon-soft);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+  background: linear-gradient(180deg, rgba(3, 12, 18, 0.9), transparent);
+  pointer-events: none;
+}
+
+.tech-hud__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #2bff88;
+  box-shadow: 0 0 10px #2bff88;
+  animation: tech-blink 1.6s steps(2, start) infinite;
+}
+
+.tech-corner {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  z-index: 95;
+  border: 2px solid var(--tech-line);
+  pointer-events: none;
+}
+.tech-corner--tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+.tech-corner--tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+.tech-corner--bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+.tech-corner--br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+
+/* ---------- Nav / progress / back-to-top ---------- */
+
+.tech-shell .nav {
+  background: rgba(4, 14, 20, 0.82);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--tech-line);
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.12);
+}
+
+.tech-shell .nav__mark {
+  text-shadow: 0 0 18px rgba(0, 229, 255, 0.7);
+  animation: tech-pulse 2.8s ease-in-out infinite;
+}
+
+.tech-shell .nav__ink {
+  background: linear-gradient(90deg, var(--neon), var(--neon-2));
+  box-shadow: var(--tech-glow);
+}
+
+.tech-shell .progress {
+  height: 3px;
+  background: linear-gradient(90deg, var(--neon), var(--neon-2), var(--neon-3));
+  box-shadow: var(--tech-glow);
+}
+
+.tech-shell .to-top {
+  border: 1px solid var(--tech-line);
+  color: var(--neon-soft);
+  background: rgba(3, 12, 18, 0.85);
+  box-shadow: var(--tech-glow);
+}
+
+/* ---------- Hero: glitch title, glow stats, ticker ---------- */
+
+.tech-hero .hero__title-line {
+  position: relative;
+  background: linear-gradient(92deg, #ffffff 10%, var(--neon-soft) 45%, var(--neon-2) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tech-title-shine 5s linear infinite;
+  background-size: 200% 100%;
+}
+
+.tech-hero .hero__title-line::before,
+.tech-hero .hero__title-line::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  background: none;
+  -webkit-text-fill-color: transparent;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.tech-hero .hero__title-line::before {
+  color: var(--neon);
+  text-shadow: -2px 0 var(--neon);
+  animation: tech-glitch-a 3.2s steps(2, end) infinite;
+}
+
+.tech-hero .hero__title-line::after {
+  color: var(--neon-2);
+  text-shadow: 2px 0 var(--neon-2);
+  animation: tech-glitch-b 2.7s steps(2, end) infinite;
+}
+
+.tech-hero .hero-stat__num {
+  color: var(--neon-soft);
+  text-shadow: 0 0 16px rgba(0, 229, 255, 0.75);
+}
+
+.tech-hero .hero__trophy {
+  animation: tech-float 6s ease-in-out infinite;
+}
+
+.tech-ticker {
+  position: relative;
+  overflow: hidden;
+  margin-top: 28px;
+  padding: 10px 0;
+  border-top: 1px solid var(--tech-line);
+  border-bottom: 1px solid var(--tech-line);
+  background: rgba(0, 229, 255, 0.04);
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+
+.tech-ticker__track {
+  display: flex;
+  gap: 36px;
+  width: max-content;
+  white-space: nowrap;
+  font-family: var(--font-label);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--neon-soft);
+  animation: tech-marquee 36s linear infinite;
+}
+
+.tech-ticker:hover .tech-ticker__track {
+  animation-play-state: paused;
+}
+
+/* ---------- Cards: neon frame, sweep, lift ---------- */
+
+.tech-shell .champ-card,
+.tech-shell .legend-card,
+.tech-shell .feat,
+.tech-shell .hof-row__main {
+  position: relative;
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+  overflow: hidden;
+}
+
+.tech-shell .champ-card:hover,
+.tech-shell .legend-card:hover,
+.tech-shell .feat:hover {
+  border-color: var(--neon);
+  box-shadow: var(--tech-glow), inset 0 0 24px rgba(0, 229, 255, 0.08);
+}
+
+.tech-shell .champ-card::after,
+.tech-shell .legend-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(0, 229, 255, 0.22) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.7s ease;
+  pointer-events: none;
+}
+
+.tech-shell .champ-card:hover::after,
+.tech-shell .legend-card:hover::after {
+  transform: translateX(120%);
+}
+
+.tech-shell .champ-card__year,
+.tech-shell .sec-head,
+.tech-shell .chron__sel-year {
+  color: var(--neon-soft);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+}
+
+/* Era switch + buttons: neon active state */
+.tech-shell .era-switch {
+  border-color: var(--tech-line);
+  box-shadow: inset 0 0 14px rgba(0, 229, 255, 0.08);
+}
+
+.tech-shell .era-switch__btn.is-active {
+  background: linear-gradient(90deg, var(--neon), var(--neon-3));
+  color: #031018;
+  box-shadow: var(--tech-glow);
+}
+
+/* Section bands: faint HUD glow on hover */
+.tech-shell .band {
+  transition: box-shadow 0.4s;
+}
+
+.tech-shell .band:hover {
+  box-shadow: inset 0 0 80px rgba(0, 229, 255, 0.04);
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes tech-grid-pan {
+  from { background-position: 0 0; }
+  to { background-position: 56px 112px; }
+}
+
+@keyframes tech-scan-sweep {
+  from { top: -140px; }
+  to { top: 110vh; }
+}
+
+@keyframes tech-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@keyframes tech-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.5)); }
+  50% { filter: drop-shadow(0 0 14px rgba(0, 229, 255, 0.9)); }
+}
+
+@keyframes tech-title-shine {
+  from { background-position: 0% 0; }
+  to { background-position: 200% 0; }
+}
+
+@keyframes tech-glitch-a {
+  0%, 88%, 100% { transform: translate(0, 0); opacity: 0; }
+  90% { transform: translate(-3px, 1px); opacity: 0.7; }
+  94% { transform: translate(3px, -1px); opacity: 0.7; }
+  98% { transform: translate(0, 0); opacity: 0; }
+}
+
+@keyframes tech-glitch-b {
+  0%, 82%, 100% { transform: translate(0, 0); opacity: 0; }
+  84% { transform: translate(3px, 0); opacity: 0.6; }
+  88% { transform: translate(-3px, 1px); opacity: 0.6; }
+  92% { transform: translate(0, 0); opacity: 0; }
+}
+
+@keyframes tech-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes tech-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ---------- Reduced motion: keep it readable ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .tech-grid,
+  .tech-scanline::after,
+  .tech-hud__dot,
+  .tech-hero .hero__title-line,
+  .tech-hero .hero__title-line::before,
+  .tech-hero .hero__title-line::after,
+  .tech-hero .hero__trophy,
+  .tech-ticker__track,
+  .tech-shell .nav__mark {
+    animation: none !important;
+  }
+}
