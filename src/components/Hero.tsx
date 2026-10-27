@@ -38,8 +38,9 @@ export default function Hero({ onSelect }: { onSelect: (id: string, source?: HTM
   const cityCount = new Set(majors.map((m) => m.location)).size
   const top20YearCount = Object.keys(top20).length
 
+  const tickerItems = majors.map((m) => `${m.year} ${m.champion.team}`).join('  ◆  ')
   return (
-    <header className="hero" ref={ref}>
+    <header className="hero tech-hero" ref={ref}>
       <div className="hero__bg" style={{ ['--hero-photo' as string]: `url(${crowdTex})` }} aria-hidden="true" />
       <div className="hero__trophy" style={{ ['--trophy-photo' as string]: `url(${heroTrophy})` }} aria-hidden="true" />
       <div className="hero__shade" aria-hidden="true" />
@@ -48,10 +49,10 @@ export default function Hero({ onSelect }: { onSelect: (id: string, source?: HTM
           <p className="hero__kicker">THE HISTORY OF</p>
           <h1 className="hero__title">
             <span className="hero__title-mask">
-              <span className="hero__title-line">COUNTER-STRIKE</span>
+              <span className="hero__title-line" data-text="COUNTER-STRIKE">COUNTER-STRIKE</span>
             </span>
             <span className="hero__title-mask">
-              <span className="hero__title-line hero__title-line--accent">MAJORS</span>
+              <span className="hero__title-line hero__title-line--accent" data-text="MAJORS">MAJORS</span>
             </span>
           </h1>
           <p className="hero__years">
@@ -127,6 +128,12 @@ export default function Hero({ onSelect }: { onSelect: (id: string, source?: HTM
           </div>
           <div className="feat__photo" style={{ ['--feat-photo' as string]: `url(${arenaStrip})` }} aria-hidden="true" />
         </aside>
+      </div>
+      <div className="tech-ticker" aria-hidden="true">
+        <div className="tech-ticker__track">
+          <span>{tickerItems} ◆&nbsp;</span>
+          <span>{tickerItems} ◆&nbsp;</span>
+        </div>
       </div>
     </header>
   )
